@@ -1,8 +1,5 @@
-# Dependencies
-.psci_modules
-bower_components
+.db
+.env
 node_modules
-
-# Generated files
-.psci
-output
+components/routes/_*
+.sass-cache/*
