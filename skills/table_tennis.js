@@ -3,7 +3,7 @@ const _ = require('lodash');
 const Elo = require('@pelevesque/elo')
 
 module.exports = function(controller) {
-  controller.hears(['^teams (.+) (.+) (.+) (.+)$'], 'direct_message,direct_mention', function(bot, message) {
+  controller.hears(['^teams (.+) (.+) (.+) (.+)$'], 'direct_mention', function(bot, message) {
     console.log(message);
     var players = [message.match[1], message.match[2], message.match[3], message.match[4]];
     shuffle(players);
@@ -11,16 +11,31 @@ module.exports = function(controller) {
     bot.reply(message, ":pingpong: Team one: *" + players[0] + " and " + players[1] + "*, team two: *" + players[2] + " and " + players[3] + "*. Fight! :pingpong:");
   });
   
-  controller.hears(['^b <@(.+)> <@(.+)> <@(.+)> <@(.+)>$'], 'direct_message,direct_mention', function(bot, message) {
+  controller.hears(['^leaderboard$'], 'direct_message,direct_mention', function(bot, message) {
+    try {
+    let scores = load_db().scores;
+    let lb = _.chain(scores).map(function(score, user) {return {score: score, user: user}}).orderBy(['score', 'user'], ['desc', 'asc']).value();
+    let msg = "    :trophy: Leaderboard :trophy:\n";
+    msg += "\n\n";
+    _.forEach(lb, function(row, idx) {
+      msg += _.padStart((idx+1), 3) + ". <@" + row.user + ">" + ":  " + _.padStart(Math.round(row.score), 4) + "\n";
+    });
+    bot.reply(message, msg);
+    } catch(err) {
+      console.log(err);
+    }
+  });
+  
+  controller.hears(['^ranked <@(.+)> <@(.+)> <@(.+)> <@(.+)>$'], 'direct_mention', function(bot, message) {
     var players = [message.match[1], message.match[2], message.match[3], message.match[4]];
     
-    //var unique_players = players.filter(function(elem, pos) {
-    //  return players.indexOf(elem) == pos;
-    //});
-    let unique_players = players;
+    var unique_players = players.filter(function(elem, pos) {
+      return players.indexOf(elem) == pos;
+    });
+    //let unique_players = players;
     if (unique_players.length != 4) {
-      //bot.reply(message, "Invalid number of unique players :(");
-      //return;
+      bot.reply(message, "Invalid number of unique players :(");
+      return;
     }
     shuffle(unique_players);  // To randomize ties.
     
@@ -92,6 +107,10 @@ module.exports = function(controller) {
           callback: function(reply, convo) {
             if (!(_.includes(unique_players, reply.user))) {
               console.log("Unauthorized action.");
+              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
+                convo.say("Naughty, naughty.");
+              });
+              return;
             }
             let db = load_db();
             let res = win_game(db, gameId, 'team_a', 'team_b');
@@ -104,6 +123,10 @@ module.exports = function(controller) {
           callback: function(reply, convo) {
             if (!(_.includes(unique_players, reply.user))) {
               console.log("Unauthorized action.");
+              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
+                convo.say("Naughty, naughty.");
+              });
+              return;
             }
             let db = load_db();
             let res = win_game(db, gameId, 'team_b', 'team_a');
@@ -116,6 +139,10 @@ module.exports = function(controller) {
           callback: function(reply, convo) {
             if (!(_.includes(unique_players, reply.user))) {
               console.log("Unauthorized action.");
+              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
+                convo.say("Naughty, naughty.");
+              });
+              return;
             }
             let db = load_db();
             win_game(db, gameId, 'team_a', 'team_b');
@@ -128,6 +155,10 @@ module.exports = function(controller) {
           callback: function(reply, convo) {
             if (!(_.includes(unique_players, reply.user))) {
               console.log("Unauthorized action.");
+              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
+                convo.say("Naughty, naughty.");
+              });
+              return;
             }
             let db = load_db();
             win_game(db, gameId, 'team_b', 'team_a');
@@ -141,6 +172,10 @@ module.exports = function(controller) {
             console.log("Drawing.");
             if (!(_.includes(unique_players, reply.user))) {
               console.log("Unauthorized action.");
+              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
+                convo.say("Naughty, naughty.");
+              });
+              return;
             }
             let db = load_db();
             let res = draw_game(db, gameId);
@@ -154,6 +189,10 @@ module.exports = function(controller) {
             console.log("Canceling.");
             if (!(_.includes(unique_players, reply.user))) {
               console.log("Unauthorized action.");
+              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
+                convo.say("Naughty, naughty.");
+              });
+              return;
             }
             bot.replyInteractive(reply, "_Game ignored._");
             let db = load_db();
