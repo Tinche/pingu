@@ -48,7 +48,7 @@ module.exports = function(controller) {
     let p_s = _.map(unique_players, function(player) {
       return [player, _.get(scores, player, 1000)];
     });
-    _.sortBy(p_s, function(t) {t[1]});
+    p_s = _.sortBy(p_s, function(t) {t[1]});
     
     let team_a = [p_s[0][0], p_s[3][0]];
     let team_b = [p_s[1][0], p_s[2][0]];
@@ -309,15 +309,15 @@ function draw_game(db, id) {
   
   let elo = new Elo();
   
-  let outcome = elo.getOutcome(teamAElo, teamAElo, 0.5);
+  let outcome = elo.getOutcome(teamAElo, teamBElo, 0.5);
   
   let aDelta = outcome.a.delta;
   let bDelta = outcome.b.delta;
   
-  _.set(scores, game.team_a[0], (_.get(scores, game.team_a[0], 1000)) + (aDelta / 2));
-  _.set(scores, game.team_a[1], (_.get(scores, game.team_a[1], 1000)) + (aDelta / 2));
-  _.set(scores, game.team_b[0], (_.get(scores, game.team_b[0], 1000)) + (bDelta / 2));
-  _.set(scores, game.team_b[1], (_.get(scores, game.team_b[1], 1000)) + (bDelta / 2));
+  _.set(scores, game.team_a[0], _.get(scores, game.team_a[0], 1000)) + (aDelta / 2);
+  _.set(scores, game.team_a[1], _.get(scores, game.team_a[1], 1000)) + (aDelta / 2);
+  _.set(scores, game.team_b[0], _.get(scores, game.team_b[0], 1000)) + (bDelta / 2);
+  _.set(scores, game.team_b[1], _.get(scores, game.team_b[1], 1000)) + (bDelta / 2);
   
   game.outcome = "draw";
   
@@ -332,6 +332,6 @@ function draw_game(db, id) {
 
 function formatChanges(res) {
   return "Changes: " + _.join(_.map(res, function(tuple, username) {
-    return "<@" + username + "> " + tuple[0] + " (" + tuple[1] + ")"
+    return "<@" + username + "> " + tuple[0].toFixed(1) + " (" + tuple[1].toFixed(0) + ")"
   }), ', ') + ".";
 }
