@@ -21,6 +21,20 @@
 
 # Registers:
 "1	LINE	0
+	    "18": {
+	      "id": 18,
+	      "team_a": [
+	        "U66TB74DS",
+	        "U03HN68MA"
+	      ],
+	      "team_b": [
+	        "U03PT09EQ",
+	        "U0486L17H"
+	      ],
+	      "ts": 1513946442,
+	      "outcome": "pending"
+	    }
+"2	LINE	0
 	    "16": {
 	      "id": 16,
 	      "team_a": [
@@ -34,32 +48,39 @@
 	      "ts": 1513778250,
 	      "outcome": "pending"
 	    }
-"2	LINE	0
+"3	LINE	0
 	    "U8E13C45R": 1000,
 ""-	CHAR	0
 	,
 
 # File marks:
-'0  210  4  ~/.data/db.json
-'1  1  0  ~/.data/dvb.json
-'2  201  4  ~/.data/db.json
+'0  236  4  ~/.data/db.json
+'1  210  4  ~/.data/db.json
+'2  1  0  ~/.data/dvb.json
+'3  201  4  ~/.data/db.json
 
 # Jumplist (newest first):
+-'  236  4  ~/.data/db.json
+-'  2  0  ~/.data/db.json
+-'  1  0  ~/.data/db.json
 -'  210  4  ~/.data/db.json
 -'  211  0  ~/.data/db.json
--'  1  0  ~/.data/db.json
 -'  1  0  ~/.data/dvb.json
 -'  201  4  ~/.data/db.json
+-'  1  0  ~/.data/dvb.json
+-'  1  0  ~/.data/dvb.json
 -'  1  0  ~/.data/dvb.json
 
 # History of marks within files (newest to oldest):
 
 > ~/.data/db.json
-	"	210	4
-	.	210	4
+	"	236	4
+	.	236	4
 	+	201	0
 	+	211	0
 	+	210	4
+	+	237	0
+	+	236	4
 
 > ~/.data/dvb.json
 	"	1	0

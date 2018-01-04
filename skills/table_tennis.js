@@ -27,12 +27,13 @@ module.exports = function(controller) {
   });
   
   controller.hears(['^ranked <@(.+)> <@(.+)> <@(.+)> <@(.+)>$'], 'direct_mention', function(bot, message) {
+    console.log('Received ranking request.');
     var players = [message.match[1], message.match[2], message.match[3], message.match[4]];
     
     var unique_players = players.filter(function(elem, pos) {
       return players.indexOf(elem) == pos;
     });
-    //let unique_players = players;
+    
     if (unique_players.length != 4) {
       bot.reply(message, "Invalid number of unique players :(");
       return;
@@ -48,16 +49,15 @@ module.exports = function(controller) {
     let p_s = _.map(unique_players, function(player) {
       return [player, _.get(scores, player, 1000)];
     });
-    p_s = _.sortBy(p_s, function(t) {t[1]});
     
-    let team_a = [p_s[0][0], p_s[3][0]];
-    let team_b = [p_s[1][0], p_s[2][0]];
+    let teams = generate_teams(p_s);
+    let team_a = teams[0];
+    let team_b = teams[1];
     
     let game = create_game(games, team_a, team_b, message.event_time);
     let gameId = game.id;
     
-    bot.startConversation(message, function(err, convo) {
-      convo.ask({
+    bot.reply(message, {
         attachments: [{
           title: ":pingpong: Team one: <@" + team_a[0] + "> and <@" + team_a[1] + ">   :crossed_swords:   team two <@" + team_b[0] + "> and <@" + team_b[1] + ">. Fight! :pingpong:",
           callback_id: game.id,
@@ -101,110 +101,55 @@ module.exports = function(controller) {
             } 
           ]
         }]
-      }, [
-        {
-          pattern: "taw",
-          callback: function(reply, convo) {
-            if (!(_.includes(unique_players, reply.user))) {
-              console.log("Unauthorized action.");
-              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
-                convo.say("Naughty, naughty.");
-              });
-              return;
-            }
-            let db = load_db();
-            let res = win_game(db, gameId, 'team_a', 'team_b');
-            save_db(db);
-            bot.replyInteractive(reply, "_Team one win. " + formatChanges(res) + "_");
-          }
-        },
-        {
-          pattern: "tbw",
-          callback: function(reply, convo) {
-            if (!(_.includes(unique_players, reply.user))) {
-              console.log("Unauthorized action.");
-              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
-                convo.say("Naughty, naughty.");
-              });
-              return;
-            }
-            let db = load_db();
-            let res = win_game(db, gameId, 'team_b', 'team_a');
-            save_db(db);
-            bot.replyInteractive(reply, "_Team two win. " + formatChanges(res) + "_");
-          }
-        },
-        {
-          pattern: "tam",
-          callback: function(reply, convo) {
-            if (!(_.includes(unique_players, reply.user))) {
-              console.log("Unauthorized action.");
-              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
-                convo.say("Naughty, naughty.");
-              });
-              return;
-            }
-            let db = load_db();
-            win_game(db, gameId, 'team_a', 'team_b');
-            save_db(db);
-            bot.replyInteractive(reply, "Team one megawin.");
-          }
-        },
-        {
-          pattern: "tbm",
-          callback: function(reply, convo) {
-            if (!(_.includes(unique_players, reply.user))) {
-              console.log("Unauthorized action.");
-              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
-                convo.say("Naughty, naughty.");
-              });
-              return;
-            }
-            let db = load_db();
-            win_game(db, gameId, 'team_b', 'team_a');
-            save_db(db);
-            bot.replyInteractive(reply, "Team two megawin.");
-          }
-        },
-        {
-          pattern: "draw",
-          callback: function(reply, convo) {
-            console.log("Drawing.");
-            if (!(_.includes(unique_players, reply.user))) {
-              console.log("Unauthorized action.");
-              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
-                convo.say("Naughty, naughty.");
-              });
-              return;
-            }
-            let db = load_db();
-            let res = draw_game(db, gameId);
-            save_db(db);
-            bot.replyInteractive(reply, "_Draw. " + formatChanges(res) + "_");
-          }
-        },
-        {
-          pattern: "cancel",
-          callback: function(reply, convo) {
-            console.log("Canceling.");
-            if (!(_.includes(unique_players, reply.user))) {
-              console.log("Unauthorized action.");
-              bot.startPrivateConversation({user: reply.user}, function(err, convo) {
-                convo.say("Naughty, naughty.");
-              });
-              return;
-            }
-            bot.replyInteractive(reply, "_Game ignored._");
-            let db = load_db();
-            cancel_game(db.games, gameId);
-            save_db(db);
-          }
-        }
-      ]);
     });
     
     save_db(db);
   });
+  
+  controller.on('interactive_message_callback', function(bot, message) {
+    console.log('Interactive message callback');
+    let gameId = parseInt(message.callback_id);
+    let userId = message.user;
+    let outcome = message.text;
+    console.log('Outcome for ' + gameId + ' is ' + outcome + ', according to ' + userId);
+    
+    let db = load_db();
+    let games = db.games;
+    let game = _.get(games, message.callback_id);
+    
+    if ((!(_.includes(game.team_a, userId)) && !(_.includes(game.team_b, userId)))) {
+      console.log('Unauthorized action.');
+      bot.startPrivateConversation({user: userId}, function(err, convo) {
+        convo.say("Naughty, naughty.");
+      });
+      return;
+    }
+    
+    if (game.outcome !== 'pending') {
+      console.log('Game already handled.');
+      bot.replyInteractive(message, 'Game already handled.');
+      return;
+    }
+    
+    if (outcome === 'taw') {
+      let res = win_game(db, gameId, 'team_a', 'team_b');
+      save_db(db);
+      bot.replyInteractive(message, "_Team one win. " + formatChanges(res) + "_");
+    } else if (outcome === 'tbw') {
+      let res = win_game(db, gameId, 'team_b', 'team_a');
+      save_db(db);
+      bot.replyInteractive(message, "_Team two win. " + formatChanges(res) + "_");
+    } else if (outcome === 'draw') {
+      let res = draw_game(db, gameId);
+      save_db(db);
+      bot.replyInteractive(message, "_Draw. " + formatChanges(res) + "_");
+    } else if (outcome === 'cancel') {
+      bot.replyInteractive(message, "_Game ignored._");
+      cancel_game(db.games, gameId);
+      save_db(db);
+    }
+  });
+
 };
 
 /**
@@ -233,6 +178,22 @@ function save_db(db) {
   fs.writeFileSync('./.data/db.json', JSON.stringify(db, null, 2) , 'utf-8');
 }
 
+/**
+ * Generate two teams.
+ */
+function generate_teams(players_with_scores) {
+  console.log('Generating teams from ' + players_with_scores);
+  players_with_scores = _.sortBy(players_with_scores, t => t[1]);
+    
+  let team_a = [players_with_scores[0][0], players_with_scores[3][0]];
+  let team_b = [players_with_scores[1][0], players_with_scores[2][0]];
+  
+  let res = [team_a, team_b];
+  console.log('Generated: ' + res);
+  
+  return res;
+}
+
 function create_game(games, team_a, team_b, ts) {
   let _id = 0
   if(!(_.isEmpty(games))) {
@@ -250,6 +211,7 @@ function create_game(games, team_a, team_b, ts) {
 }
 
 function cancel_game(games, id) {
+  console.log("Cancelling.");
   let game = _.get(games, id);
   if (game.outcome == "pending") {
     game.outcome = "canceled";
@@ -276,10 +238,10 @@ function win_game(db, id, team_won_name, team_lost_name) {
   let winDelta = outcome.a.delta;
   let loseDelta = outcome.b.delta;
   
-  _.set(scores, winners[0], (_.get(scores, winners[0], 1000)) + (winDelta / 2));
-  _.set(scores, winners[1], (_.get(scores, winners[1], 1000)) + (winDelta / 2));
-  _.set(scores, losers[0], (_.get(scores, losers[0], 1000)) + (loseDelta / 2));
-  _.set(scores, losers[1], (_.get(scores, losers[1], 1000)) + (loseDelta / 2));
+  _.set(scores, winners[0], _.get(scores, winners[0], 1000) + (winDelta / 2));
+  _.set(scores, winners[1], _.get(scores, winners[1], 1000) + (winDelta / 2));
+  _.set(scores, losers[0], _.get(scores, losers[0], 1000) + (loseDelta / 2));
+  _.set(scores, losers[1], _.get(scores, losers[1], 1000) + (loseDelta / 2));
   
   if (team_won_name === "team_a") {
     game.outcome = "taw";
@@ -314,10 +276,10 @@ function draw_game(db, id) {
   let aDelta = outcome.a.delta;
   let bDelta = outcome.b.delta;
   
-  _.set(scores, game.team_a[0], _.get(scores, game.team_a[0], 1000)) + (aDelta / 2);
-  _.set(scores, game.team_a[1], _.get(scores, game.team_a[1], 1000)) + (aDelta / 2);
-  _.set(scores, game.team_b[0], _.get(scores, game.team_b[0], 1000)) + (bDelta / 2);
-  _.set(scores, game.team_b[1], _.get(scores, game.team_b[1], 1000)) + (bDelta / 2);
+  _.set(scores, game.team_a[0], _.get(scores, game.team_a[0], 1000) + (aDelta / 2));
+  _.set(scores, game.team_a[1], _.get(scores, game.team_a[1], 1000) + (aDelta / 2));
+  _.set(scores, game.team_b[0], _.get(scores, game.team_b[0], 1000) + (bDelta / 2));
+  _.set(scores, game.team_b[1], _.get(scores, game.team_b[1], 1000) + (bDelta / 2));
   
   game.outcome = "draw";
   
